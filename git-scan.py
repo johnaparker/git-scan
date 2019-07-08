@@ -69,6 +69,10 @@ def git_untracked_files(git_path):
     """get untracked files"""
     return run_git_command(['ls-files', '--others', '--exclude-standard'], git_path)
 
+def git_stash_list(git_path):
+    """get list of stashes"""
+    return run_git_command(['stash', 'list'], git_path)
+
 def get_history(git_path, fetch=True):
     """Obtain the status of the history relative to the remote
 
@@ -77,7 +81,7 @@ def get_history(git_path, fetch=True):
         fetch      (bool) If True, fetch remote data before getting history
     """
     if fetch:
-        git_fethc(git_path)
+        git_fetch(git_path)
 
     local = local_sha(git_path)
     remote = remote_sha(git_path)
@@ -93,22 +97,20 @@ def get_history(git_path, fetch=True):
         return History.DIVERGED
 
 for path in paths:
-    diff_text = git_diff(path)
+    diff = git_diff(path)
     history = get_history(path)
     untracked = git_untracked_files(path)
-
+    stashes = git_stash_list(path)
     ### un-commited branches
-
-    ### stashes
-
-
 
     ### display
     print(colored(path, color='yellow'))
-    if diff_text:
+    if diff:
         print('\tdiffs')
     if history != history.EQUAL:
         print('\t' + str(history))
     if untracked:
         print('\tuntracked files')
+    if stashes:
+        print('\tstashed changes')
     print()
