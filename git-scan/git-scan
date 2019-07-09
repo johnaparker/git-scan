@@ -42,6 +42,11 @@ def run_git_command(options, git_path):
     text = cmd.communicate()[0].decode()
     return text
 
+def is_git_repository(git_path):
+    """verify that git_path is a git repository"""
+    path = pathlib.Path(git_path).expanduser().resolve()
+    return (path / '.git').exists()
+
 def git_diff(git_path):
     """run git diff"""
     return run_git_command(['diff'], git_path)
@@ -118,7 +123,7 @@ def get_dangling_branches(git_path):
     local_branches = get_local_branches(git_path)
 
     dangling = filter(lambda b: b not in remote_branches, local_branches)
-    return dangling
+    return list(dangling)
 
 def run_parser():
     parser = argparse.ArgumentParser()
@@ -176,7 +181,10 @@ def add_config(repositories):
 
     for repo in repositories:
         path = pathlib.Path(repo).resolve().as_posix()
-        config['repositories'].append(path)
+        if is_git_repository(path):
+            config['repositories'].append(path)
+        else:
+            print(f"'{path}' is not a git repository")
 
     toml.dump(config, open(config_path, 'w'))
 
@@ -259,6 +267,8 @@ if __name__ == '__main__':
         print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
         print(colored(' - ' + path, color='yellow'))
         tab = ' '*6
+        if not is_git_repository(path):
+            print(tab + colored('WARNING: not a git repository', color='red'))
         if diff:
             print(tab + 'diffs')
         if history != history.EQUAL:
