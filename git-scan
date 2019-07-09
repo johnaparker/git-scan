@@ -1,3 +1,5 @@
+#!/bin/python
+
 import subprocess
 from termcolor import colored
 import toml
