@@ -148,13 +148,15 @@ def run_parser():
     add_parser.add_argument('repository', type=str, nargs='*',
             help='list of repositories to be removed')
 
-    add_parser = subparsers.add_parser('remove',
+    remove_parser = subparsers.add_parser('remove',
             help="remove a repository from the list of scanned repositories")
-    add_parser.add_argument('repository', type=str, nargs='*',
+    remove_parser.add_argument('repository', type=str, nargs='*',
             help='list of repositories to be removed')
 
-    add_parser = subparsers.add_parser('list',
+    list_parser = subparsers.add_parser('list',
             help="list all scannable repositories")
+    list_parser.add_argument('--resolve', action='store_true', default=False,
+            help="resolve the absolute paths")
 
     return parser.parse_args()
 
@@ -215,6 +217,20 @@ def get_paths():
     paths = list(set(paths))
     return paths
 
+def list_config(resolve=False):
+    config = get_config()
+    repos = config['repositories']
+    for repo in repos:
+        if not resolve:
+            print(repo)
+        else:
+            path = pathlib.Path(repo).expanduser()
+            globbed = glob.glob(str(path))
+            if len(globbed) > 1:
+                print('\n'.join(globbed))
+            else:
+                print(path)
+
 if __name__ == '__main__':
     args = run_parser()
 
@@ -223,6 +239,9 @@ if __name__ == '__main__':
         exit()
     elif args.action == 'remove':
         remove_config(args.repository)
+        exit()
+    elif args.action == 'list':
+        list_config(resolve=args.resolve)
         exit()
 
     paths = get_paths()
