@@ -3,6 +3,7 @@ from termcolor import colored
 import toml
 import argparse
 import enum
+import pathlib
 
 """
 Configuration can be used to control which ones are checked (default: all)
@@ -30,9 +31,6 @@ class History(enum.Enum):
     PULL     = enum.auto()  # history is behind remote
     PUSH     = enum.auto()  # history is ahead of remote
     DIVERGED = enum.auto()  # history has diverged from remote
-
-paths = ['/home/john/projects/miepy',
-         '/home/john/projects/stoked']
 
 def run_git_command(options, git_path):
     """Run a git command
@@ -73,7 +71,7 @@ def git_stash_list(git_path):
     """get list of stashes"""
     return run_git_command(['stash', 'list'], git_path)
 
-def get_history(git_path, fetch=True):
+def get_history(git_path, fetch=False):
     """Obtain the status of the history relative to the remote
 
     Arguments:
@@ -96,7 +94,14 @@ def get_history(git_path, fetch=True):
     else:
         return History.DIVERGED
 
+
+paths = ['/home/john/projects/miepy',
+         '/home/john/projects/stoked']
+
+paths = list(set(paths))
 for path in paths:
+    git_fetch(path)
+
     diff = git_diff(path)
     history = get_history(path)
     untracked = git_untracked_files(path)
@@ -104,13 +109,17 @@ for path in paths:
     ### un-commited branches
 
     ### display
-    print(colored(path, color='yellow'))
+    print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
+    print(colored(' - ' + path, color='yellow'))
+    tab = ' '*6
     if diff:
-        print('\tdiffs')
+        print(tab + 'diffs')
     if history != history.EQUAL:
-        print('\t' + str(history))
+        print(tab + str(history))
     if untracked:
-        print('\tuntracked files')
+        print(tab + 'untracked files')
     if stashes:
-        print('\tstashed changes')
-    print()
+        print(tab + 'stashed changes')
+
+    if path != paths[-1]:
+        print()
