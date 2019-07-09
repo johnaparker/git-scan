@@ -125,34 +125,55 @@ def get_dangling_branches(git_path):
 
     return dangling
 
-paths = ['/home/john/projects/miepy',
-         '/home/john/projects/stoked']
+def run_parser():
+    parser = argparse.ArgumentParser()
 
-paths = list(set(paths))
-for path in paths:
-    git_fetch(path)
+    parser.add_argument('--pull', action='store_true', default=False,
+            help="run 'git pull' on all repositories that do not have a conflict")
 
-    diff = git_diff(path)
-    history = get_history(path)
-    untracked = git_untracked_files(path)
-    stashes = git_stash_list(path)
-    dangling_branches = get_dangling_branches(path)
+    parser.add_argument('--push', action='store_true', default=False,
+            help="run 'git push' on all repositories that do not have a conflict")
 
-    ### display
-    print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
-    print(colored(' - ' + path, color='yellow'))
-    tab = ' '*6
-    if diff:
-        print(tab + 'diffs')
-    if history != history.EQUAL:
-        print(tab + str(history))
-    if untracked:
-        print(tab + 'untracked files')
-    if stashes:
-        print(tab + 'stashed changes')
-    if dangling_branches:
-        f = ', '.join([colored(b, attrs=['underline']) for b in dangling_branches])
-        print(tab + 'branches dangling: ' + f)
+    parser.add_argument('--tmux', action='store_true', default=False,
+            help="open all repositories that require changes in tmux windows")
 
-    if path != paths[-1]:
-        print()
+    parser.add_argument('--ssh', type='str', nargs='?',
+            help="run git-scan on a different machine over ssh")
+
+    parser.add_argument('--repo', type='str', nargs='*',
+            help="run git-scan over the given repositories")
+
+    return parser.parse_args()
+
+if __name__ == '__main__':
+    paths = ['/home/john/projects/miepy',
+             '/home/john/projects/stoked']
+
+    paths = list(set(paths))
+    for path in paths:
+        git_fetch(path)
+
+        diff = git_diff(path)
+        history = get_history(path)
+        untracked = git_untracked_files(path)
+        stashes = git_stash_list(path)
+        dangling_branches = get_dangling_branches(path)
+
+        ### display
+        print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
+        print(colored(' - ' + path, color='yellow'))
+        tab = ' '*6
+        if diff:
+            print(tab + 'diffs')
+        if history != history.EQUAL:
+            print(tab + str(history))
+        if untracked:
+            print(tab + 'untracked files')
+        if stashes:
+            print(tab + 'stashed changes')
+        if dangling_branches:
+            f = ', '.join([colored(b, attrs=['underline']) for b in dangling_branches])
+            print(tab + 'branches dangling: ' + f)
+
+        if path != paths[-1]:
+            print()
