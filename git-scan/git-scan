@@ -15,10 +15,6 @@ tmux option to open projects in window -- auto-show diff, etc.
 option to pull all and report on errors
 
 testing: create temp repo
-TOML config file: list git paths; list remotes
-argparse to: list projects, display changes, perform action, open tmux
-
-learn: setup.py for a project that installs a bin file
 learn: to execute everything over ssh
 
 detect all git repos within a repo as part of config (but not submodules?)
@@ -121,11 +117,7 @@ def get_dangling_branches(git_path):
     remote_branches = get_remote_branches(git_path)
     local_branches = get_local_branches(git_path)
 
-    dangling = []
-    for branch in local_branches:
-        if branch not in remote_branches:
-            dangling.append(branch)
-
+    dangling = filter(lambda b: b not in remote_branches, local_branches)
     return dangling
 
 def run_parser():
@@ -140,21 +132,71 @@ def run_parser():
     parser.add_argument('--tmux', action='store_true', default=False,
             help="open all repositories that require changes in tmux windows")
 
-    parser.add_argument('--ssh', type='str', nargs='?',
+    parser.add_argument('--ssh', type=str, nargs='?',
             help="run git-scan on a different machine over ssh")
 
-    parser.add_argument('--repo', type='str', nargs='*',
+    parser.add_argument('--repo', type=str, nargs='*',
             help="run git-scan over the given repositories")
 
-    parser.add_argument('--no-fetch', type='store_true', default=False,
+    parser.add_argument('--no-fetch', action='store_true', default=False,
             help="do not run any 'git fetch' commands")
+
+    subparsers = parser.add_subparsers(dest="action")
+
+    add_parser = subparsers.add_parser('add',
+            help="add a new repository to the list of scanned repositories")
+    add_parser.add_argument('repository', type=str, nargs='*',
+            help='list of repositories to be removed')
+
+    add_parser = subparsers.add_parser('remove',
+            help="remove a repository from the list of scanned repositories")
+    add_parser.add_argument('repository', type=str, nargs='*',
+            help='list of repositories to be removed')
+
+    add_parser = subparsers.add_parser('list',
+            help="list all scannable repositories")
 
     return parser.parse_args()
 
-def get_config():
+def get_config_path():
     path = pathlib.Path('~/.config/git-scan/git-scan.conf').expanduser()
+    return path
+
+def get_config():
+    path = get_config_path()
     config = toml.load(path)
     return config
+
+def add_config(repositories):
+    """add new repositories to the configuration file"""
+    config_path = get_config_path()
+    config = toml.load(config_path)
+
+    for repo in repositories:
+        path = pathlib.Path(repo).resolve().as_posix()
+        config['repositories'].append(path)
+
+    toml.dump(config, open(config_path, 'w'))
+
+def remove_config(repositories):
+    """remove repositories from the configuration file"""
+    config_path = get_config_path()
+    config = toml.load(config_path)
+
+    for repo in repositories:
+        path = pathlib.Path(repo).resolve()
+        for i, other_path in enumerate(config['repositories']):
+            try:
+                if path.samefile(pathlib.Path(other_path).expanduser()):
+                    config['repositories'].pop(i)
+                    break
+
+            except FileNotFoundError:  # in case of globs
+                if path.match(other_path):
+                    config['repositories'].pop(i)
+                    break
+
+    toml.dump(config, open(config_path, 'w'))
 
 def get_paths():
     config = get_config()
@@ -174,6 +216,15 @@ def get_paths():
     return paths
 
 if __name__ == '__main__':
+    args = run_parser()
+
+    if args.action == 'add':
+        add_config(args.repository)
+        exit()
+    elif args.action == 'remove':
+        remove_config(args.repository)
+        exit()
+
     paths = get_paths()
     for path in paths:
         #TODO: don't git-fetch if a repo doesn't have a remote-url
