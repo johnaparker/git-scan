@@ -33,8 +33,9 @@ ssh = [
 ]
     """.strip()
 
-    config_path = pathlib.Path('~/.config/git-scan').expanduser()
+    config_path = pathlib.Path('~/.config/git-scan/git-scan.conf').expanduser()
     if not os.path.exists(config_path):
+        os.makedirs(config_path.parent, exist_ok=True)
         with open(config_path, 'w') as f:
             f.write(config_str)
 

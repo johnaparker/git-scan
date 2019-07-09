@@ -152,7 +152,7 @@ def run_parser():
     return parser.parse_args()
 
 def get_config():
-    path = pathlib.Path('~/.config/git-scan').expanduser()
+    path = pathlib.Path('~/.config/git-scan/git-scan.conf').expanduser()
     config = toml.load(path)
     return config
 
