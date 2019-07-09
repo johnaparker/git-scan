@@ -6,6 +6,7 @@ import toml
 import argparse
 import enum
 import pathlib
+import glob
 
 """
 Configuration can be used to control which ones are checked (default: all)
@@ -145,13 +146,35 @@ def run_parser():
     parser.add_argument('--repo', type='str', nargs='*',
             help="run git-scan over the given repositories")
 
+    parser.add_argument('--no-fetch', type='store_true', default=False,
+            help="do not run any 'git fetch' commands")
+
     return parser.parse_args()
 
-if __name__ == '__main__':
-    paths = ['/home/john/projects/miepy',
-             '/home/john/projects/stoked']
+def get_config():
+    path = pathlib.Path('~/.config/git-scan').expanduser()
+    config = toml.load(path)
+    return config
+
+def get_paths():
+    config = get_config()
+    repos = config['repositories']
+
+    paths = []
+    for repo in repos:
+        path = pathlib.Path(repo)
+        path = path.expanduser()
+        globbed = glob.glob(str(path))
+        if len(globbed) > 1:
+            paths.extend(globbed)
+        else:
+            paths.append(str(path))
 
     paths = list(set(paths))
+    return paths
+
+if __name__ == '__main__':
+    paths = get_paths()
     for path in paths:
         git_fetch(path)
 
