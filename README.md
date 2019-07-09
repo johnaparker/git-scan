@@ -1,16 +1,29 @@
 # Git-Scan
-Git-Scan scans local or remote git repositories for history that is divergent from the origin branch.
+Git-Scan is a command-line utility to scan local or remote git repositories for history that is divergent from the remote branch
 
 ## Features
-+ Scan repositories for missing push/pulls, uncommited changes, untracked files, stashes, and dangling branches
++ Scan repositories for missing push & pulls, uncommited changes, untracked files, leftover stashes, and dangling branches
 + Automatically pull or push a group of repositories
-+ Open repositories in need of changes in TMUX windows
 + Execute over SSH to git-scan on a different computer
-+ Configuration file to list repositories and remote SSH hosts
++ Open repositories in need of changes in TMUX windows (including over SSH)
++ Configuration file to list scannable repositories and remote SSH hosts
 
 ## Usage
+To run a git-scan
 ```
 git-scan [--tmux] [--ssh] [--push] [--pull] [--repo]
+```
+To add a repository to the list of scannable repositories
+```
+git-scan add /path/to/repository
+```
+To remove a repository
+```
+git-scan remove /path/to/repository
+```
+To list all scannable repositories
+```
+git-scan list
 ```
 
 ## Installation
@@ -25,4 +38,4 @@ pip install .
 If installed with the ``--user`` flag, make sure to add ``~/.local/bin`` to your PATH
 
 ## License
-MiePy is licensed under the terms of the MIT license.
+Git-Scan is licensed under the terms of the MIT license.
