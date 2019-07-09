@@ -94,6 +94,36 @@ def get_history(git_path, fetch=False):
     else:
         return History.DIVERGED
 
+def get_remote_branches(git_path):
+    """get a list of the remote branch names"""
+    out = run_git_command(['ls-remote', '--heads', '-q'], git_path).strip()
+    out = out.split()[1::2]   # skip the SHAs
+
+    remote_branches = []
+    for path in out:
+        remote_branches.append(pathlib.Path(path).name)
+    return remote_branches
+
+def get_local_branches(git_path):
+    """get a list of the local branch names"""
+    out = run_git_command(['for-each-ref', '--format=%(refname)', 'refs/heads/'], git_path).split()
+
+    local_branches = []
+    for path in out:
+        local_branches.append(pathlib.Path(path).name)
+    return local_branches
+
+def get_dangling_branches(git_path):
+    """get branches that do not exist on the remote"""
+    remote_branches = get_remote_branches(git_path)
+    local_branches = get_local_branches(git_path)
+
+    dangling = []
+    for branch in local_branches:
+        if branch not in remote_branches:
+            dangling.append(branch)
+
+    return dangling
 
 paths = ['/home/john/projects/miepy',
          '/home/john/projects/stoked']
@@ -106,7 +136,7 @@ for path in paths:
     history = get_history(path)
     untracked = git_untracked_files(path)
     stashes = git_stash_list(path)
-    ### un-commited branches
+    dangling_branches = get_dangling_branches(path)
 
     ### display
     print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
@@ -120,6 +150,9 @@ for path in paths:
         print(tab + 'untracked files')
     if stashes:
         print(tab + 'stashed changes')
+    if dangling_branches:
+        f = ', '.join([colored(b, attrs=['underline']) for b in dangling_branches])
+        print(tab + 'branches dangling: ' + f)
 
     if path != paths[-1]:
         print()
