@@ -266,7 +266,7 @@ if __name__ == '__main__':
         ### display
         print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
         print(colored(' - ' + path, color='yellow'))
-        tab = ' '*6
+        tab = ' '*4 + '• '
         if not is_git_repository(path):
             print(tab + colored('WARNING: not a git repository', color='red'))
         if diff:
