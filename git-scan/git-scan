@@ -11,12 +11,9 @@ import glob
 #TODO: Configuration can be used to control which ones are checked (default: all)
 #TODO: Checks should be applied to every branch
 #TODO: tmux option to open projects in window -- auto-show diff, etc.
-#TODO: option to pull all and report on errors
 
 #TODO: testing: create temp repo
 #TODO: learn: to execute everything over ssh
-
-#TODO: detect all git repos within a repo as part of config (but not submodules?)
 #TODO: add (optional) groups for groups of repos
 
 class History(enum.Enum):
@@ -234,8 +231,12 @@ def remove_config(repositories):
 
     toml.dump(config, open(config_path, 'w'))
 
-def get_paths():
-    """get paths to repositories from the config file"""
+def get_paths(repositories=[]):
+    """get paths to repositories from the config file
+    
+    Arguments:
+        repositories    list of repositories to get paths of (default: all)
+    """
     config = get_config()
     repos = config['repositories']
 
@@ -250,6 +251,14 @@ def get_paths():
             paths.append(str(path))
 
     paths = list(set(paths))
+
+    if repositories:
+        def filter_name(path):
+            name = pathlib.Path(path).name
+            return name in repositories
+
+        paths = list(filter(filter_name, paths))
+
     return paths
 
 def print_config_repos(resolve=False):
@@ -366,7 +375,7 @@ if __name__ == '__main__':
         print_config_repos(resolve=args.resolve)
         exit()
 
-    paths = get_paths()
+    paths = get_paths(args.repo)
     for i, path in enumerate(paths):
         fetch_status = git_fetch_status(path, not args.no_fetch)
 
