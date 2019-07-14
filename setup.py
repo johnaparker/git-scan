@@ -6,7 +6,7 @@ import pathlib
 
 NAME = 'git-scan'
 DESCRIPTION = "Scan local or remote git repositories for history divergent from origin"
-URL = ''
+URL = 'https://github.com/johnaparker/git-scan'
 EMAIL = 'japarker@uchicago.edu'
 AUTHOR = 'John Parker'
 KEYWORDS = 'git scan'
@@ -16,6 +16,7 @@ LICENSE = 'MIT'
 REQUIRED = [
     'termcolor', 
     'toml',
+    'libtmux',
 ]
 
 

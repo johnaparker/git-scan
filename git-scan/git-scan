@@ -7,13 +7,11 @@ import argparse
 import enum
 import pathlib
 import glob
+import libtmux
 
 #TODO: Configuration can be used to control which ones are checked (default: all)
 #TODO: Checks should be applied to every branch
-#TODO: tmux option to open projects in window -- auto-show diff, etc.
-
 #TODO: testing: create temp repo
-#TODO: learn: to execute everything over ssh
 #TODO: add (optional) groups for groups of repos
 
 class History(enum.Enum):
@@ -376,6 +374,15 @@ if __name__ == '__main__':
         exit()
 
     paths = get_paths(args.repo)
+
+    if args.tmux:
+        tmux_server = libtmux.Server()
+        name = 'git-scan'
+        tmux_session = tmux_server.find_where(dict(session_name=name))
+        if tmux_session is None:
+            tmux_session = tmux_server.new_session(session_name=name, attach=False)
+        tmux_server.switch_client(name)
+
     for i, path in enumerate(paths):
         fetch_status = git_fetch_status(path, not args.no_fetch)
 
@@ -402,5 +409,18 @@ if __name__ == '__main__':
 
         corrections = corrections_to_make(diff=diff, history=history, 
                 untracked=untracked, stashes=stashes, dangling_branches=dangling_branches)
+
+        first_window = True
+        if args.tmux and corrections:
+            name = pathlib.Path(path).name
+            if first_window:
+                window = tmux_session.new_window(window_name=name, start_directory=path, attach=True)
+                tmux_session.windows[0].kill_window()
+                first_window = False
+            else:
+                window = tmux_session.new_window(window_name=name, start_directory=path, attach=False)
+            pane = window.attached_pane
+            pane.send_keys('git status', enter=True)
+            pane.send_keys(f'git-scan --no-fetch --repo {name}', enter=True)
 
         display(path, i, corrections=corrections, messages=messages)

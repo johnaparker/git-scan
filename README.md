@@ -19,7 +19,7 @@ where the optional arguments are
 + **``pull:``**   pull repository changes if behind remote and there are no merge conflicts
 + **``repo:``**   list of repositories to scan (defaults to all in the configuration file)
 + **``tmux:``**   open all repositories with problems to fix in a TMUX window
-+ **``ssh:``**`   run the git-scan on the provided ssh host
++ **``ssh:``**    run the git-scan on the provided ssh host
 
 To add a repository to the list of scannable repositories
 ```
