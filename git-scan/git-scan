@@ -267,17 +267,24 @@ def print_config_repos(resolve=False):
             else:
                 print(path)
 
-def corrections_to_make(fetch_status, diff, history, untracked, stashes, dangling_branches):
+def fetch_warning_message(fetch_status):
+    """obtain a warning string for a given FetchStatus"""
+    warning = colored('WARNING: ', color='red')
+
+    if fetch_status == FetchStatus.SUCCESS:
+        return ''
+    elif fetch_status == FetchStatus.FAIL:
+        warning += 'failed to fetch from remote'
+    elif fetch_status == FetchStatus.NOT_GIT:
+        warning += 'not a git repository'
+    elif fetch_status == FetchStatus.NO_REMOTE:
+        warning += 'repository does not have a remote'
+
+    return warning
+
+def corrections_to_make(diff, history, untracked, stashes, dangling_branches):
     """Determine what correction need to be made"""
     corrections = []
-
-    warning = colored('WARNING: ', color='red')
-    if fetch_status == FetchStatus.FAIL:
-        corrections.append(warning + 'failed to fetch from remote')
-    elif fetch_status == FetchStatus.NOT_GIT:
-        corrections.append(warning + 'not a git repository')
-    elif fetch_status == FetchStatus.NO_REMOTE:
-        corrections.append(warning + 'repository does not have a remote')
 
     if diff:
         corrections.append('diffs')
@@ -293,13 +300,14 @@ def corrections_to_make(fetch_status, diff, history, untracked, stashes, danglin
 
     return corrections
 
-def display(path, i, corrections):
+def display(path, i, corrections, messages):
     """display the status of a repository
     
     Arguments:
         path    path to repository
         i       index label
         corrections     list of corrections to make
+        messages        list of messages to print
     """
     tab = ' '*4 + '• '
     print(colored(f'({i+1}/{len(paths)}) ', color='yellow'), end='')
@@ -312,6 +320,38 @@ def display(path, i, corrections):
             print(tab + c)
     else:
         print(colored(' ✓', color='green'))
+
+    for m in messages:
+        print(tab + m)
+
+def attempt_pull(git_path, history, diff):
+    """attempt a pull request
+    
+    Arguments:
+        git_path   path to git repository
+        history    status of History
+        diff       result of git diff
+    """
+    if history == History.PULL and not diff:
+        out, err = run_git_command(['pull'], git_path)
+        if not err:
+            return True
+
+    return False
+
+def attempt_push(git_path, history):
+    """attempt a push request
+    
+    Arguments:
+        git_path   path to git repository
+        history    status of History
+    """
+    if history == History.PUSH:
+        out, err = run_git_command(['push'], git_path)
+        if not err:
+            return True
+
+    return False
 
 if __name__ == '__main__':
     args = run_parser()
@@ -336,7 +376,22 @@ if __name__ == '__main__':
         stashes = git_stash_list(path)
         dangling_branches = get_dangling_branches(path)
 
-        corrections = corrections_to_make(fetch_status=fetch_status, diff=diff, history=history, 
+        messages = []
+
+        if args.pull:
+            if attempt_pull(path, history, diff):
+                history = History.EQUAL
+                messages.append(colored('CHANGES PULLED', color='green'))
+
+        if args.push:
+            if attempt_push(path, history):
+                history = History.EQUAL
+                messages.append(colored('CHANGES PUSHED', color='green'))
+
+        if fetch_status != FetchStatus.SUCCESS:
+            messages.append(fetch_warning_message(fetch_status))
+
+        corrections = corrections_to_make(diff=diff, history=history, 
                 untracked=untracked, stashes=stashes, dangling_branches=dangling_branches)
 
-        display(path, i, corrections=corrections)
+        display(path, i, corrections=corrections, messages=messages)
