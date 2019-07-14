@@ -8,22 +8,16 @@ import enum
 import pathlib
 import glob
 
-"""
-Configuration can be used to control which ones are checked (default: all)
-Checks should be applied to every branch
-tmux option to open projects in window -- auto-show diff, etc.
-option to pull all and report on errors
+#TODO: Configuration can be used to control which ones are checked (default: all)
+#TODO: Checks should be applied to every branch
+#TODO: tmux option to open projects in window -- auto-show diff, etc.
+#TODO: option to pull all and report on errors
 
-testing: create temp repo
-learn: to execute everything over ssh
+#TODO: testing: create temp repo
+#TODO: learn: to execute everything over ssh
 
-detect all git repos within a repo as part of config (but not submodules?)
-add (optional) groups for groups of repos
-
-see related project: https://github.com/totten/git-scan
-see creating git command: https://github.com/rotati/wiki/wiki/Create-custom-Git-command
-                          https://dev.to/shobhit/git-refresh-4hn
-"""
+#TODO: detect all git repos within a repo as part of config (but not submodules?)
+#TODO: add (optional) groups for groups of repos
 
 class History(enum.Enum):
     EQUAL    = enum.auto()  # history is the same as remote
@@ -31,49 +25,72 @@ class History(enum.Enum):
     PUSH     = enum.auto()  # history is ahead of remote
     DIVERGED = enum.auto()  # history has diverged from remote
 
+class FetchStatus(enum.Enum):
+    SUCCESS    = enum.auto()   # fetch succeeded 
+    FAIL       = enum.auto()   # fetch failed
+    NO_REMOTE  = enum.auto()   # repo has no remote
+    NOT_GIT    = enum.auto()   # not a git repository
+
+
 def run_git_command(options, git_path):
-    """Run a git command
+    """Run a git command, return (stdout, stderr)
     
     Arguments:
         options    list of commands following git
         git_path   path to git repository
     """
-    cmd = subprocess.Popen(['git',] + list(options), stdout=subprocess.PIPE, cwd=git_path)
-    text = cmd.communicate()[0].decode()
-    return text
+    cmd = subprocess.run(['git',] + list(options), cwd=git_path, capture_output=True)
+    stdout = cmd.stdout.decode()
+    stderr = cmd.stderr.decode()
+    
+    return stdout, stderr
 
 def is_git_repository(git_path):
     """verify that git_path is a git repository"""
     path = pathlib.Path(git_path).expanduser().resolve()
     return (path / '.git').exists()
 
+def git_remote(git_path):
+    """git the list of remotes"""
+    return run_git_command(['remote'], git_path)[0]
+
 def git_diff(git_path):
     """run git diff"""
-    return run_git_command(['diff'], git_path)
+    return run_git_command(['diff'], git_path)[0]
 
 def git_fetch(git_path):
-    """run git fetch"""
-    return run_git_command(['fetch'], git_path)
+    """run git fetch (if possible), return a FetchStatus"""
+
+    if not is_git_repository(git_path):
+        return FetchStatus.NOT_GIT
+    if not git_remote(git_path):
+        return FetchStatus.NO_REMOTE
+
+    out, err = run_git_command(['fetch'], git_path)
+    if err:
+        return FetchStatus.FAIL
+    else:
+        return FetchStatus.SUCCESS
 
 def local_sha(git_path):
     """get the local SHA"""
-    return run_git_command(['rev-parse', '@'], git_path).strip()
+    return run_git_command(['rev-parse', '@'], git_path)[0].strip()
 
 def remote_sha(git_path):
     """get the remote SHA"""
-    return run_git_command(['rev-parse', '@{u}'], git_path).strip()
+    return run_git_command(['rev-parse', '@{u}'], git_path)[0].strip()
 
 def base_sha(git_path):
     """get the remote base SHA"""
-    return run_git_command(['merge-base', '@', '@{u}'], git_path).strip()
+    return run_git_command(['merge-base', '@', '@{u}'], git_path)[0].strip()
 
 def git_untracked_files(git_path):
     """get untracked files"""
-    return run_git_command(['ls-files', '--others', '--exclude-standard'], git_path)
+    return run_git_command(['ls-files', '--others', '--exclude-standard'], git_path)[0]
 
 def git_stash_list(git_path):
     """get list of stashes"""
-    return run_git_command(['stash', 'list'], git_path)
+    return run_git_command(['stash', 'list'], git_path)[0]
 
 def get_history(git_path, fetch=False):
     """Obtain the status of the history relative to the remote
@@ -100,7 +117,7 @@ def get_history(git_path, fetch=False):
 
 def get_remote_branches(git_path):
     """get a list of the remote branch names"""
-    out = run_git_command(['ls-remote', '--heads', '-q'], git_path).strip()
+    out = run_git_command(['ls-remote', '--heads', '-q'], git_path)[0].strip()
     out = out.split()[1::2]   # skip the SHAs
 
     remote_branches = []
@@ -110,7 +127,7 @@ def get_remote_branches(git_path):
 
 def get_local_branches(git_path):
     """get a list of the local branch names"""
-    out = run_git_command(['for-each-ref', '--format=%(refname)', 'refs/heads/'], git_path).split()
+    out = run_git_command(['for-each-ref', '--format=%(refname)', 'refs/heads/'], git_path)[0].split()
 
     local_branches = []
     for path in out:
@@ -126,6 +143,7 @@ def get_dangling_branches(git_path):
     return list(dangling)
 
 def run_parser():
+    """run the command-line parser"""
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--pull', action='store_true', default=False,
@@ -166,10 +184,12 @@ def run_parser():
     return parser.parse_args()
 
 def get_config_path():
+    """get the path to the configuration file"""
     path = pathlib.Path('~/.config/git-scan/git-scan.conf').expanduser()
     return path
 
 def get_config():
+    """get the configuration file contents as a dictionary"""
     path = get_config_path()
     config = toml.load(path)
     return config
@@ -209,6 +229,7 @@ def remove_config(repositories):
     toml.dump(config, open(config_path, 'w'))
 
 def get_paths():
+    """get paths to repositories from the config file"""
     config = get_config()
     repos = config['repositories']
 
@@ -225,7 +246,8 @@ def get_paths():
     paths = list(set(paths))
     return paths
 
-def list_config(resolve=False):
+def print_config_repos(resolve=False):
+    """print repositories in the config file"""
     config = get_config()
     repos = config['repositories']
     for repo in repos:
@@ -239,6 +261,52 @@ def list_config(resolve=False):
             else:
                 print(path)
 
+def corrections_to_make(fetch_status, diff, history, untracked, stashes, dangling_branches):
+    """Determine what correction need to be made"""
+    corrections = []
+
+    warning = colored('WARNING: ', color='red')
+    if fetch_status == FetchStatus.FAIL:
+        corrections.append(warning + 'failed to fetch from remote')
+    elif fetch_status == FetchStatus.NOT_GIT:
+        corrections.append(warning + 'not a git repository')
+    elif fetch_status == FetchStatus.NO_REMOTE:
+        corrections.append(warning + 'repository does not have a remote')
+
+    if diff:
+        corrections.append('diffs')
+    if history != history.EQUAL:
+        corrections.append(str(history))
+    if untracked:
+        corrections.append('untracked files')
+    if stashes:
+        corrections.append('stashed changes')
+    if dangling_branches:
+        f = ', '.join([colored(b, attrs=['underline']) for b in dangling_branches])
+        corrections.append('branches dangling: ' + f)
+
+    return corrections
+
+def display(path, i, corrections):
+    """display the status of a repository
+    
+    Arguments:
+        path    path to repository
+        i       index label
+        corrections     list of corrections to make
+    """
+    tab = ' '*4 + '• '
+    print(colored(f'({i+1}/{len(paths)}) ', color='yellow'), end='')
+    print(colored(pathlib.Path(path).name, attrs=['bold'], color='yellow'), end='')
+    print(' - ' + path, end='')
+
+    if corrections:
+        print(colored(' ✗', color='red'))
+        for c in corrections:
+            print(tab + c)
+    else:
+        print(colored(' ✓', color='green'))
+
 if __name__ == '__main__':
     args = run_parser()
 
@@ -249,37 +317,19 @@ if __name__ == '__main__':
         remove_config(args.repository)
         exit()
     elif args.action == 'list':
-        list_config(resolve=args.resolve)
+        print_config_repos(resolve=args.resolve)
         exit()
 
     paths = get_paths()
-    for path in paths:
-        #TODO: don't git-fetch if a repo doesn't have a remote-url
-        git_fetch(path)
-
+    for i, path in enumerate(paths):
+        fetch_status = git_fetch(path)
         diff = git_diff(path)
         history = get_history(path)
         untracked = git_untracked_files(path)
         stashes = git_stash_list(path)
         dangling_branches = get_dangling_branches(path)
 
-        ### display
-        print(colored(pathlib.Path(path).name, color='yellow', attrs=['bold']), end='')
-        print(colored(' - ' + path, color='yellow'))
-        tab = ' '*4 + '• '
-        if not is_git_repository(path):
-            print(tab + colored('WARNING: not a git repository', color='red'))
-        if diff:
-            print(tab + 'diffs')
-        if history != history.EQUAL:
-            print(tab + str(history))
-        if untracked:
-            print(tab + 'untracked files')
-        if stashes:
-            print(tab + 'stashed changes')
-        if dangling_branches:
-            f = ', '.join([colored(b, attrs=['underline']) for b in dangling_branches])
-            print(tab + 'branches dangling: ' + f)
+        corrections = corrections_to_make(fetch_status=fetch_status, diff=diff, history=history, 
+                untracked=untracked, stashes=stashes, dangling_branches=dangling_branches)
 
-        if path != paths[-1]:
-            print()
+        display(path, i, corrections=corrections)
