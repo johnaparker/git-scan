@@ -35,13 +35,9 @@ git-scan list [--resolve]
 ```
 
 ## Installation
-Clone the repository
+Git-Scan can be installed with pip
 ```shell
-git clone https://github.com/johnaparker/git-scan.git && cd git-scan
-```
-and install with pip
-```shell
-pip install .
+pip install git-scan
 ```
 If installed with the ``--user`` flag, make sure to add ``~/.local/bin`` to your PATH
 
