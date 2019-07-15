@@ -9,7 +9,7 @@ DESCRIPTION = "Scan local or remote git repositories for history divergent from 
 URL = 'https://github.com/johnaparker/git-scan'
 EMAIL = 'japarker@uchicago.edu'
 AUTHOR = 'John Parker'
-KEYWORDS = 'git scan'
+KEYWORDS = 'git scan ssh tmux repositories'
 VERSION = '0.1'
 LICENSE = 'MIT'
 
