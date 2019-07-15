@@ -5,9 +5,9 @@ It is particularly useful when dealing with multiple git repositories across mul
 ## Features
 + Scan repositories for missing push & pulls, uncommited changes, untracked files, leftover stashes, and dangling branches
 + Automatically pull or push a group of repositories
++ Open repositories in need of changes in TMUX windows
 + Execute over SSH to git-scan on a different computer
-+ Open repositories in need of changes in TMUX windows (including over SSH)
-+ Configuration file to list scannable repositories and remote SSH hosts
++ Configuration file to list scannable repositories
 
 ## Usage
 To run a git-scan
@@ -47,10 +47,9 @@ If installed with the ``--user`` flag, make sure to add ``~/.local/bin`` to your
 
 ## Configuration File
 A configuration file located at ``~/.config/git-scan/git-scan.conf`` is created.
-This is a TOML file listing the scannable repositories and remote hosts:
+This is a TOML file listing the scannable repositories:
 ```
 repositories = ["/path/to/repository_1", "/path/to/repository_2"]
-ssh = ["host1", "host2"]
 ```
 The config file can be editted manually or changed using the ``add`` and ``remove`` commands.
 Glob patterns and tilde expansions are allowed, i.e. ``"~/path/to/repos/*"``

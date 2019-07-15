@@ -8,6 +8,7 @@ import enum
 import pathlib
 import glob
 import libtmux
+import paramiko
 
 #TODO: Configuration can be used to control which ones are checked (default: all)
 #TODO: Checks should be applied to every branch
@@ -34,9 +35,17 @@ def run_git_command(options, git_path):
         options    list of commands following git
         git_path   path to git repository
     """
-    cmd = subprocess.run(['git',] + list(options), cwd=git_path, capture_output=True)
-    stdout = cmd.stdout.decode()
-    stderr = cmd.stderr.decode()
+    global ssh
+
+    if ssh is not None:
+        command = f'cd {git_path}; git ' + ' '.join(options)
+        stdin, stdout, stderr = ssh.exec_command(command)
+        stdout = ''.join(stdout)
+        stderr = ''.join(stderr)
+    else:
+        cmd = subprocess.run(['git',] + list(options), cwd=git_path, capture_output=True)
+        stdout = cmd.stdout.decode()
+        stderr = cmd.stderr.decode()
     
     return stdout, stderr
 
@@ -156,7 +165,7 @@ def run_parser():
     parser.add_argument('--tmux', action='store_true', default=False,
             help="open all repositories that require changes in tmux windows")
 
-    parser.add_argument('--ssh', type=str, nargs='?',
+    parser.add_argument('--ssh', type=str,
             help="run git-scan on a different machine over ssh")
 
     parser.add_argument('--repo', type=str, nargs='*',
@@ -360,6 +369,22 @@ def attempt_push(git_path, history):
 
     return False
 
+def get_ssh_id(ssh_input):
+    """Get (username, hostname) for given input. Can be of the following forms:
+        (1) username@hostname
+        (2) alias in ~/.ssh/config
+    """
+    try:
+        username, hostname = ssh_input.split('@')
+    except ValueError:
+        config = paramiko.config.SSHConfig()
+        ssh_config_file = pathlib.Path('~/.ssh/config').expanduser()
+        config.parse(open(ssh_config_file))
+        lookup = config.lookup(ssh_input)
+        username, hostname = lookup['user'], lookup['hostname']
+
+    return username, hostname
+
 if __name__ == '__main__':
     args = run_parser()
 
@@ -373,7 +398,19 @@ if __name__ == '__main__':
         print_config_repos(resolve=args.resolve)
         exit()
 
+
     paths = get_paths(args.repo)
+
+    if args.ssh and args.tmux:
+        print('git-scan: combining ssh and tmux options is not currently supported')
+        exit(0)
+
+    ssh = None
+    if args.ssh:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        username, hostname = get_ssh_id(args.ssh)
+        ssh.connect(hostname=hostname, username=username, timeout=5)
 
     if args.tmux:
         tmux_server = libtmux.Server()

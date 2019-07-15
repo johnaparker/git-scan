@@ -17,6 +17,7 @@ REQUIRED = [
     'termcolor', 
     'toml',
     'libtmux',
+    'paramiko',
 ]
 
 
@@ -27,12 +28,7 @@ def post_install():
     config_str = """
 repositories = [
 
-]
-
-ssh = [
-
-]
-    """.strip()
+]""".strip()
 
     config_path = pathlib.Path('~/.config/git-scan/git-scan.conf').expanduser()
     if not os.path.exists(config_path):
