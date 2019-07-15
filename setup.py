@@ -10,7 +10,7 @@ URL = 'https://github.com/johnaparker/git-scan'
 EMAIL = 'japarker@uchicago.edu'
 AUTHOR = 'John Parker'
 KEYWORDS = 'git scan ssh tmux repositories'
-VERSION = '0.2'
+VERSION = '0.2.1'
 LICENSE = 'MIT'
 
 REQUIRED = [
